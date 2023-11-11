@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+VIRSH_COMMAND=(virsh)
+#VIRSH_COMMAND=(virsh -c "qemu:///system")
+VIRSH_VM="RDPWindows"
+
 if [ ! -f "${HOME}/.config/winapps/winapps.conf" ] && [ ! -f "${HOME}/.winapps" ]; then
 	echo "You need to create a ~/.config/winapps/winapps.conf configuration. Exiting..."
 	exit
@@ -54,13 +58,13 @@ if [ -z "${RDP_IP}" ]; then
 		echo '  sudo usermod -a -G kvm $(whoami)'
 		exit
 	fi
-	if [ -z "$(virsh list |grep RDPWindows)" ]; then
-		echo "RDPWindows is not running, run:"
-		echo "  virsh start RDPWindows"
+	if [ -z "$("${VIRSH_COMMAND[@]}" list |grep -- "$VIRSH_VM")" ]; then
+		echo "win10-atlas is not running, run:"
+		echo "  '${VIRSH_COMMAND[*]}' '$VIRSH_VM'"
 		exit
 	fi
-	RDP_IP=$(virsh net-dhcp-leases default |grep RDPWindows |awk '{print $5}')
-	RDP_IP=${RDP_IP%%\/*}
+	RDP_IP="$("${VIRSH_COMMAND[@]}" domifaddr -- "$VIRSH_VM"|awk '$4 != "" {print $4}'|tail -n1)"
+	RDP_IP="${RDP_IP%%\/*}"
 fi
 
 dprint "1:${1}"
@@ -72,14 +76,16 @@ if [ "${MULTIMON}" = "true" ]; then
 	MULTI_FLAG="multimon"
 fi
 
+RDP_ARGS=(xfreerdp ${RDP_FLAGS} /d:"${RDP_DOMAIN}" /u:"${RDP_USER}" /p:"${RDP_PASS}" /v:"${RDP_IP}" +auto-reconnect +clipboard +home-drive)
+
 if [ "${1}" = "windows" ]; then
-	xfreerdp ${RDP_FLAGS} /d:"${RDP_DOMAIN}" /u:"${RDP_USER}" /p:"${RDP_PASS}" /v:${RDP_IP} /scale:${RDP_SCALE} /dynamic-resolution +clipboard +auto-reconnect +home-drive /wm-class:"Microsoft Windows" 1> /dev/null 2>&1 &
+	"${RDP_ARGS[@]}" /scale:"${RDP_SCALE}" /dynamic-resolution /wm-class:"Microsoft Windows" 1> /dev/null 2>&1 &
 elif [ "${1}" = "check" ]; then
 	dprint "CHECK"
-	xfreerdp ${RDP_FLAGS} /d:"${RDP_DOMAIN}" /u:"${RDP_USER}" /p:"${RDP_PASS}" /v:${RDP_IP} +auto-reconnect +clipboard +home-drive -wallpaper /scale:${RDP_SCALE} /dynamic-resolution /${MULTI_FLAG} /app:"explorer.exe"
+	"${RDP_ARGS[@]}" -wallpaper /scale:"${RDP_SCALE}" /dynamic-resolution /${MULTI_FLAG} /app:"explorer.exe"
 elif [ "${1}" = "manual" ]; then
 	dprint "MANUAL:${2}"
-	xfreerdp ${RDP_FLAGS} /d:"${RDP_DOMAIN}" /u:"${RDP_USER}" /p:"${RDP_PASS}" /v:${RDP_IP} +auto-reconnect +home-drive +clipboard -wallpaper /scale:${RDP_SCALE} /dynamic-resolution /${MULTI_FLAG} /app:"${2}" 1> /dev/null 2>&1 &
+	"${RDP_ARGS[@]}" -wallpaper /scale:"${RDP_SCALE}" /dynamic-resolution /${MULTI_FLAG} /app:"${2}" 1> /dev/null 2>&1 &
 elif [ "${1}" != "install" ]; then
 	dprint "DIR:${DIR}"
 	if [ -e "${DIR}/../apps/${1}/info" ]; then
@@ -99,9 +105,9 @@ elif [ "${1}" != "install" ]; then
 		dprint "HOME:${HOME}"
 		FILE=$(echo "${2}" | sed 's|'"${HOME}"'|\\\\tsclient\\home|;s|/|\\|g;s|\\|\\\\|g')
 		dprint "FILE:${FILE}"
-		xfreerdp ${RDP_FLAGS} /d:"${RDP_DOMAIN}" /u:"${RDP_USER}" /p:"${RDP_PASS}" /v:${RDP_IP} +auto-reconnect +clipboard +home-drive -wallpaper /scale:${RDP_SCALE} /dynamic-resolution /${MULTI_FLAG} /wm-class:"${FULL_NAME}" /app:"${WIN_EXECUTABLE}" /app-icon:"${ICON}" /app-cmd:"\"${FILE}\"" 1> /dev/null 2>&1 &
+		"${RDP_ARGS[@]}" -wallpaper /scale:"${RDP_SCALE}" /dynamic-resolution /${MULTI_FLAG} /wm-class:"${FULL_NAME}" /app:"${WIN_EXECUTABLE}" /app-icon:"${ICON}" /app-cmd:"\"${FILE}\"" 1> /dev/null 2>&1 &
 	else
-		xfreerdp ${RDP_FLAGS} /d:"${RDP_DOMAIN}" /u:"${RDP_USER}" /p:"${RDP_PASS}" /v:${RDP_IP} +auto-reconnect +clipboard +home-drive -wallpaper /scale:${RDP_SCALE} /dynamic-resolution /${MULTI_FLAG} /wm-class:"${FULL_NAME}" /app:"${WIN_EXECUTABLE}" /app-icon:"${ICON}" 1> /dev/null 2>&1 &
+		"${RDP_ARGS[@]}" -wallpaper /scale:"${RDP_SCALE}" /dynamic-resolution /${MULTI_FLAG} /wm-class:"${FULL_NAME}" /app:"${WIN_EXECUTABLE}" /app-icon:"${ICON}" 1> /dev/null 2>&1 &
 	fi
 fi
 
