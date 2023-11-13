@@ -3,6 +3,8 @@
 VIRSH_COMMAND=(virsh)
 #VIRSH_COMMAND=(virsh -c "qemu:///system")
 VIRSH_VM="RDPWindows"
+FREERDP="xfreerdp"
+#FREERDP="wlfreerdp"
 
 if [ ! -f "${HOME}/.config/winapps/winapps.conf" ] && [ ! -f "${HOME}/.winapps" ]; then
 	echo "You need to create a ~/.config/winapps/winapps.conf configuration. Exiting..."
@@ -45,8 +47,8 @@ else
 	touch "${HOME}/.local/share/winapps/run"
 fi
 
-if [ -z "$(which xfreerdp)" ]; then
-	echo "You need xfreerdp!"
+if [ -z "$(which "$FREERDP")" ]; then
+	echo "You need "$FREERDP"!"
 	echo "  sudo apt-get install -y freerdp2-x11"
 	exit
 fi
@@ -76,10 +78,10 @@ if [ "${MULTIMON}" = "true" ]; then
 	MULTI_FLAG="multimon"
 fi
 
-RDP_ARGS=(xfreerdp ${RDP_FLAGS} /d:"${RDP_DOMAIN}" /u:"${RDP_USER}" /p:"${RDP_PASS}" /v:"${RDP_IP}" +auto-reconnect +clipboard +home-drive)
+RDP_ARGS=("$FREERDP" ${RDP_FLAGS} /d:"${RDP_DOMAIN}" /u:"${RDP_USER}" /p:"${RDP_PASS}" /v:"${RDP_IP}" +auto-reconnect +clipboard)
 
 if [ "${1}" = "windows" ]; then
-	"${RDP_ARGS[@]}" /scale:"${RDP_SCALE}" /dynamic-resolution /wm-class:"Microsoft Windows" 1> /dev/null 2>&1 &
+	"${RDP_ARGS[@]}" /scale:"${RDP_SCALE}" /dynamic-resolution /wm-class:"Microsoft Windows" 
 elif [ "${1}" = "check" ]; then
 	dprint "CHECK"
 	"${RDP_ARGS[@]}" -wallpaper /scale:"${RDP_SCALE}" /dynamic-resolution /${MULTI_FLAG} /app:"explorer.exe"
